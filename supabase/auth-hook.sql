@@ -17,6 +17,7 @@ create or replace function public.custom_access_token_hook(event jsonb)
 returns jsonb
 language plpgsql
 stable
+security definer
 set search_path = public, pg_temp
 as $$
 declare
@@ -47,6 +48,14 @@ revoke execute on function public.custom_access_token_hook from authenticated, a
 -- Authentication → Hooks → Customize Access Token (JWT) Claims hook,
 -- pointing at public.custom_access_token_hook. (This registration step
 -- can't be done from SQL alone — it's a project-level Auth config change.)
+--
+-- IMPORTANT: this function must be SECURITY DEFINER (set above). Supabase
+-- Auth calls hook functions as the `supabase_auth_admin` role, which has
+-- no table grant on platform_users and doesn't satisfy the is_platform_user()
+-- RLS policy either. Without SECURITY DEFINER, every login attempt fails
+-- with "Error running hook" the moment the function tries to read
+-- platform_users. SECURITY DEFINER makes it run as its owner (a superuser)
+-- instead, bypassing both the missing grant and RLS for this one query.
 
 -- ---------------------------------------------------------------------------
 -- 2. Server-side TTL enforcement for impersonation sessions
