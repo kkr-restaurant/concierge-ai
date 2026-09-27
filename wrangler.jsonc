@@ -1,0 +1,20 @@
+{
+  // Config for @opennextjs/cloudflare — deploys this Next.js app to
+  // Cloudflare Workers (not Cloudflare Pages; Pages' Next.js support is
+  // being deprecated in favor of Workers + OpenNext).
+  "name": "hotel-ai-auth",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  // Secrets (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY,
+  // JWT signing keys for the platform/tenant token split) are set with
+  // `wrangler secret put <NAME>` or via the GitHub Actions workflow's
+  // secrets — never committed here.
+  "vars": {
+    "NEXT_PUBLIC_APP_ENV": "production"
+  }
+}
