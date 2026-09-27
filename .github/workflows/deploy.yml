@@ -1,10 +1,22 @@
 name: Deploy to Cloudflare Workers
 
+# DISABLED (kept for later): this repo is currently deployed via
+# Cloudflare's own "Connect to Git" integration (Workers Builds), which
+# builds and deploys directly from Cloudflare's side on every push to
+# main — no GitHub secrets involved. This workflow duplicates that, and
+# would fail if it ran since CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID
+# are not set as repo secrets. `workflow_dispatch` means it only runs if
+# someone manually clicks "Run workflow" in the Actions tab — nothing
+# triggers it automatically. To re-enable automatic runs, restore:
+#   on:
+#     push:
+#       branches: [main]
+#     pull_request:
+#       branches: [main]
+# and add CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID under
+# Settings → Secrets and variables → Actions.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -35,10 +47,9 @@ jobs:
           # deploy/runtime via Wrangler, not at build time.
           NEXT_PUBLIC_APP_ENV: production
 
-      # Only deploy on pushes to main — PRs just build, to catch breakage
-      # before merge without touching the live environment.
+      # Manual-only now (see note above) — deploy step always runs when
+      # someone manually triggers this workflow.
       - name: Deploy to Cloudflare Workers
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
