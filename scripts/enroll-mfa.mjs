@@ -1,15 +1,15 @@
 // Run once per user: node scripts/enroll-mfa.mjs
 //
 // Usage:
-//   npm install @supabase/supabase-js
+//   npm install @supabase/supabase-js qrcode-terminal
 //   node scripts/enroll-mfa.mjs you@example.com your-password
 //
-// Prints a QR-code URL (paste into your browser to see the QR, or paste the
-// otpauth:// URI directly into an authenticator app that supports manual
-// entry) and then prompts for the 6-digit code to finish enrollment.
+// Prints an actual scannable QR code right in your terminal, then prompts
+// for the 6-digit code from your authenticator app to finish enrollment.
 
 import { createClient } from "@supabase/supabase-js";
 import readline from "node:readline/promises";
+import qrcode from "qrcode-terminal";
 
 const SUPABASE_URL = "https://cpipjhbujhxqknkkvqnn.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwaXBqaGJ1amh4cWtua2t2cW5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0MzQ5MTYsImV4cCI6MjEwNjAxMDkxNn0.eX9SbLhfPSMcPMQSKmcPze9MIm2jQwU39rBycWknv90";
@@ -36,9 +36,14 @@ if (enrollError) {
   process.exit(1);
 }
 
-console.log("\nScan this in your authenticator app (or open the QR URL in a browser):");
-console.log(enrollData.totp.qr_code ? "[QR SVG returned — see uri below for manual entry]" : "");
-console.log("\nManual entry URI:\n" + enrollData.totp.uri + "\n");
+console.log("\nScan this QR code with your authenticator app (Google Authenticator, Authy, 1Password, etc.):\n");
+await new Promise((resolve) => {
+  qrcode.generate(enrollData.totp.uri, { small: true }, (qr) => {
+    console.log(qr);
+    resolve();
+  });
+});
+console.log("Can't scan? Manual entry URI:\n" + enrollData.totp.uri + "\n");
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const code = await rl.question("Enter the 6-digit code from your app to confirm: ");
