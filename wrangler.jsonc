@@ -10,11 +10,28 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
-  // Secrets (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY,
-  // JWT signing keys for the platform/tenant token split) are set with
-  // `wrangler secret put <NAME>` or via the GitHub Actions workflow's
-  // secrets — never committed here.
+
+  // ---------------------------------------------------------------------
+  // IMPORTANT — how configuration works on Cloudflare (learned the hard way):
+  //
+  // `wrangler deploy` treats this file as the source of truth. Any plain
+  // "Variable" you add by hand in the Cloudflare dashboard is DELETED on the
+  // next deploy unless it is also listed here. Only *Secrets* survive
+  // deploys. So:
+  //
+  //   * Public, non-sensitive values  -> list them in `vars` below.
+  //     (The Supabase URL and anon key are public by design: they ship to
+  //     every visitor's browser and are protected by Row Level Security.)
+  //
+  //   * Sensitive values -> add as type "Secret" in the dashboard
+  //     (Settings -> Variables and secrets), or `wrangler secret put NAME`.
+  //     NEVER put these in this file:
+  //        SUPABASE_SERVICE_ROLE_KEY   (bypasses all row-level security)
+  //        IMPERSONATION_JWT_SECRET
+  // ---------------------------------------------------------------------
   "vars": {
-    "NEXT_PUBLIC_APP_ENV": "production"
+    "NEXT_PUBLIC_APP_ENV": "production",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://cpipjhbujhxqknkkvqnn.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwaXBqaGJ1amh4cWtua2t2cW5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0MzQ5MTYsImV4cCI6MjEwNjAxMDkxNn0.eX9SbLhfPSMcPMQSKmcPze9MIm2jQwU39rBycWknv90"
   }
 }

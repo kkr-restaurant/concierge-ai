@@ -8,3 +8,4 @@ out/
 *.tsbuildinfo
 .wrangler/
 .DS_Store
+.dev.vars

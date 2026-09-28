@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Building2,
@@ -12,12 +12,34 @@ import {
   ArrowRight
 } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
+import ConfigError from "@/app/_components/ConfigError";
 
 type Step = "credentials" | "mfa" | "success";
 
-export default function LoginClient() {
+type SupabaseConfig = { supabaseUrl?: string; supabaseAnonKey?: string };
+
+/**
+ * Receives the Supabase URL/anon key from the server component (page.tsx),
+ * which reads them from the Worker's runtime environment. If they're missing
+ * we show a clear message instead of crashing the whole page.
+ */
+export default function LoginClient({ supabaseUrl, supabaseAnonKey }: SupabaseConfig) {
+  if (!supabaseUrl || !supabaseAnonKey) return <ConfigError portal="business" />;
+  return <LoginForm supabaseUrl={supabaseUrl} supabaseAnonKey={supabaseAnonKey} />;
+}
+
+function LoginForm({
+  supabaseUrl,
+  supabaseAnonKey
+}: {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+}) {
   const router = useRouter();
-  const supabase = createBrowserSupabaseClient();
+  const supabase = useMemo(
+    () => createBrowserSupabaseClient(supabaseUrl, supabaseAnonKey),
+    [supabaseUrl, supabaseAnonKey]
+  );
 
   const [step, setStep] = useState<Step>("credentials");
   const [email, setEmail] = useState("");

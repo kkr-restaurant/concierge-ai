@@ -144,6 +144,40 @@ Still open, deliberately out of scope for this pass:
   that depends on the AI Orchestrator/monitoring pipeline this repo doesn't
   contain.
 
+## 8. Variables vs. secrets on Cloudflare — read this before touching settings
+
+**What went wrong the first time we deployed:** the Supabase URL, anon key and
+service key were added in the Cloudflare dashboard as plain *Variables*. The
+build then succeeded — and the site returned HTTP 500 on every login page.
+Cause: `wrangler deploy` treats `wrangler.jsonc` as the source of truth and
+**deletes any dashboard-defined plain Variable that isn't listed in it**.
+Only *Secrets* survive a deploy. The app woke up with no Supabase URL.
+
+The rule now:
+
+| Value | Where it lives | Why |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | `wrangler.jsonc` → `vars` | Public by design; versioned so a deploy can't wipe it |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `wrangler.jsonc` → `vars` | Public by design (ships to browsers; protected by RLS) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Dashboard → Settings → Variables and secrets, type **Secret** | Bypasses all row-level security — never in git, never a plain Variable |
+| `IMPERSONATION_JWT_SECRET` | Dashboard, type **Secret** | Signs impersonation tokens |
+
+Two more things that follow from this:
+
+- **Browser code can't rely on `process.env.NEXT_PUBLIC_*`.** Those get baked
+  into the JS at *build* time, and Cloudflare's build doesn't have them. So the
+  login pages are server components that read the values at *request* time and
+  pass them to the client component as props.
+- **If a value is ever missing**, the login pages now show "Sign-in is
+  temporarily unavailable" instead of a blank 500, and the middleware logs and
+  carries on. Visit `/api/health` to see exactly what's missing (it reports
+  presence only, never values, and also flags a wrongly-typed Supabase URL such
+  as `.com` instead of `.co`). Delete that endpoint once you have real monitoring.
+
+If the service key ever appears in a screenshot, chat, or commit: treat it as
+compromised. Supabase dashboard → Project Settings → API Keys → create a new
+secret key, delete the old one, then update the Cloudflare **Secret**.
+
 ## Alternative: if you'd rather not use the OpenNext adapter
 
 Keep the existing `Dockerfile`/`output: "standalone"` as-is and deploy the
