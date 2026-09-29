@@ -1,5 +1,6 @@
 import "server-only";
 import { NextResponse } from "next/server";
+import { decodeJwt } from "jose";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -56,8 +57,23 @@ export async function requirePlatformUser(
   }
 
   // Custom claim check — see supabase/auth-hook.sql.
-  const population = (session.user.app_metadata as Record<string, unknown>)
-    ?.population;
+  //
+  // IMPORTANT: this must read the JWT itself (session.access_token), not
+  // session.user.app_metadata. Those are two different things — GoTrue's
+  // token response includes a `user` object that mirrors the actual
+  // auth.users.raw_app_meta_data DB column, separate from the signed JWT
+  // whose claims the access-token hook modifies. session.user.app_metadata
+  // reflects the DB row (which we never touch), so it will never show the
+  // hook's injected population claim — only decoding the token itself does.
+  let population: unknown;
+  try {
+    const claims = decodeJwt(session.access_token) as {
+      app_metadata?: Record<string, unknown>;
+    };
+    population = claims.app_metadata?.population;
+  } catch {
+    population = undefined;
+  }
   if (population !== "platform") {
     return {
       ok: false,
