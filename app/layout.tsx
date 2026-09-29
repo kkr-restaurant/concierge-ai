@@ -21,8 +21,8 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Hotel AI Assistant Platform — Authentication",
-  description: "Sign in and manage authentication for the Hotel AI Assistant Platform."
+  title: "ConciergeAI — Authentication",
+  description: "Sign in and manage authentication for ConciergeAI."
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

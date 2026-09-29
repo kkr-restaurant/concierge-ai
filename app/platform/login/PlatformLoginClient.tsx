@@ -158,7 +158,7 @@ function PlatformLoginForm({
           </div>
           <span className="font-display font-medium text-fg">Platform admin</span>
         </div>
-        <p className="text-xs text-muted text-center mb-6 font-mono">admin.hotelaiplatform.internal</p>
+        <p className="text-xs text-muted text-center mb-6 font-mono">admin.conciergeai.internal</p>
 
         <div className="bg-pSurface border border-pBorder rounded-card p-8">
           {step === "credentials" && (
@@ -183,7 +183,7 @@ function PlatformLoginForm({
                   id="p-email"
                   type="email"
                   autoComplete="username"
-                  placeholder="you@hotelaiplatform.internal"
+                  placeholder="you@conciergeai.internal"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-pSurface2 border border-pBorder rounded-md pl-9 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-steel/60"

@@ -1,4 +1,4 @@
-# Deploying hotel-ai-auth: GitHub → Cloudflare Workers → Supabase
+# Deploying ConciergeAI: GitHub → Cloudflare Workers → Supabase
 
 This assumes the full-Cloudflare path: Cloudflare Workers (not Pages) as the
 app runtime, via the OpenNext adapter, because your current `next.config.js`

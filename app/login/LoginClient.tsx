@@ -159,11 +159,11 @@ function LoginForm({
           <div className="w-8 h-8 rounded-md bg-brass flex items-center justify-center">
             <Building2 size={18} className="text-ink" />
           </div>
-          <span className="font-display font-medium text-lg">Hotel AI Platform</span>
+          <span className="font-display font-medium text-lg">ConciergeAI</span>
         </div>
         <div>
           <p className="font-display text-3xl leading-snug max-w-sm">
-            Every guest message, every property, one console.
+            Every customer conversation, every channel, one console.
           </p>
           <p className="text-muted mt-4 max-w-sm text-sm">
             Manage AI-assisted conversations across WhatsApp and your website widget,
@@ -180,7 +180,7 @@ function LoginForm({
             {step === "credentials" && (
               <form onSubmit={handleCredentialSubmit} noValidate>
                 <h1 className="font-display text-xl font-medium mb-1">Sign in</h1>
-                <p className="text-muted text-sm mb-6">Your hotel account</p>
+                <p className="text-muted text-sm mb-6">Your business account</p>
 
                 {error && (
                   <div
@@ -201,7 +201,7 @@ function LoginForm({
                     id="email"
                     type="email"
                     autoComplete="username"
-                    placeholder="you@hotel.com"
+                    placeholder="you@yourbusiness.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-surface2 border border-border rounded-md pl-9 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brass/60"

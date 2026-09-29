@@ -1,4 +1,4 @@
-# Hotel AI Assistant Platform — Authentication module
+# ConciergeAI — Authentication module
 
 Next.js 15 (App Router) + TailwindCSS. Now wired to a real backend: Supabase
 (Postgres + Auth) for data and authentication, deployed to Cloudflare
@@ -47,8 +47,8 @@ Then open **http://localhost:3000** — it redirects straight to `/login`.
 Or without compose:
 
 ```bash
-docker build -t hotel-ai-auth .
-docker run -p 3000:3000 hotel-ai-auth
+docker build -t concierge-ai .
+docker run -p 3000:3000 concierge-ai
 ```
 
 ## Run locally without Docker
@@ -91,7 +91,7 @@ auto-advances per digit and accepts a pasted 6-digit code.
 ## Try it — platform admin side
 
 **Login** (`/platform/login`)
-- Email: `admin@hotelaiplatform.internal`
+- Email: `admin@conciergeai.internal`
 - Password: `control-room-77`
 - MFA code: `551204` (mandatory here, no opt-out)
 
