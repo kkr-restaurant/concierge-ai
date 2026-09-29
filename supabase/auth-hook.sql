@@ -9,10 +9,20 @@
 -- ---------------------------------------------------------------------------
 -- 1. Custom Access Token Hook
 -- ---------------------------------------------------------------------------
--- Stamps `population: "platform"` and `platform_role: <role>` into the JWT
--- for any auth user with a row in platform_users. Every other user (i.e.
--- every hotel-side user) gets a token with no `population` claim at all —
--- lib/auth/require-platform.ts treats its absence as an automatic reject.
+-- Stamps `app_metadata.population: "platform"` and
+-- `app_metadata.platform_role: <role>` into the JWT for any auth user with
+-- a row in platform_users. Every other user (i.e. every hotel-side user)
+-- gets a token with no such claim at all — lib/auth/require-platform.ts
+-- reads session.user.app_metadata.population and treats its absence as an
+-- automatic reject.
+--
+-- IMPORTANT: these must be nested inside app_metadata, not set as top-level
+-- claims. supabase-js's session.user.app_metadata is populated only from
+-- the JWT's app_metadata claim — a top-level custom claim (the original,
+-- broken version of this function) is invisible to that object, so the
+-- population check would silently always fail even for a real platform
+-- user. This is also the pattern Supabase's own docs use for this kind of
+-- hook (e.g. their RBAC example: '{app_metadata, claims_admin}').
 create or replace function public.custom_access_token_hook(event jsonb)
 returns jsonb
 language plpgsql
@@ -31,8 +41,8 @@ begin
   where auth_user_id = (event->>'user_id')::uuid;
 
   if platform_role is not null then
-    claims := jsonb_set(claims, '{population}', '"platform"');
-    claims := jsonb_set(claims, '{platform_role}', to_jsonb(platform_role));
+    claims := jsonb_set(claims, '{app_metadata,population}', '"platform"');
+    claims := jsonb_set(claims, '{app_metadata,platform_role}', to_jsonb(platform_role));
   end if;
 
   event := jsonb_set(event, '{claims}', claims);
