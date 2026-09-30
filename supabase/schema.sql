@@ -189,3 +189,51 @@ create index audit_log_actor_idx on audit_log (actor_platform_user_id);
 create index incident_tenants_tenant_idx on incident_tenants (tenant_id);
 create index incidents_acknowledged_by_idx on incidents (acknowledged_by);
 create index tenants_suspended_by_idx on tenants (suspended_by);
+
+-- ---------------------------------------------------------------------------
+-- Self-service business registration — business_type + tenant_memberships
+-- ---------------------------------------------------------------------------
+-- Business type drives starter templates per the IA doc; wasn't in the
+-- original schema since only the platform-admin side had been built.
+create type business_type as enum ('hotel', 'restaurant', 'medical_clinic', 'school', 'retail', 'other');
+
+alter table tenants add column business_type business_type not null default 'other';
+
+-- Links a business-side Supabase Auth user to the tenant(s) they belong to.
+-- This is the tenant-side equivalent of platform_users — a SEPARATE
+-- population, never conflated with it (see require-platform.ts / the
+-- population-separation design note in DEPLOYMENT.md).
+create type tenant_member_role as enum ('owner', 'admin', 'agent');
+
+create table tenant_memberships (
+  id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid not null references auth.users (id) on delete cascade,
+  tenant_id uuid not null references tenants (id) on delete cascade,
+  role tenant_member_role not null default 'owner',
+  created_at timestamptz not null default now(),
+  unique (auth_user_id, tenant_id)
+);
+
+create index tenant_memberships_auth_user_idx on tenant_memberships (auth_user_id);
+create index tenant_memberships_tenant_idx on tenant_memberships (tenant_id);
+
+alter table tenant_memberships enable row level security;
+
+-- A tenant-side user can see their own membership rows (not other tenants').
+create policy "members can read their own memberships"
+  on tenant_memberships for select
+  using (auth_user_id = auth.uid());
+
+-- A tenant-side user can read their own tenant's row (not other tenants').
+-- Additive to the existing "platform users can read all tenants" policy —
+-- RLS policies are OR'd together, so a platform user still sees everything,
+-- and a business user additionally sees their own.
+create policy "members can read their own tenant"
+  on tenants for select
+  using (
+    exists (
+      select 1 from tenant_memberships
+      where tenant_memberships.tenant_id = tenants.id
+        and tenant_memberships.auth_user_id = auth.uid()
+    )
+  );

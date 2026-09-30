@@ -50,6 +50,8 @@ export const config = {
   matcher: [
     "/api/v1/platform/:path*",
     "/platform/:path*",
-    "/settings/:path*"
+    "/settings/:path*",
+    "/api/v1/tenants/:path*",
+    "/dashboard/:path*"
   ]
 };
