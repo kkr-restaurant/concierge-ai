@@ -9,3 +9,4 @@ out/
 .wrangler/
 .DS_Store
 .dev.vars
+next-env.d.ts

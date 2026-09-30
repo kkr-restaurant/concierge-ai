@@ -58,7 +58,12 @@ const CreateTenantSchema = z.object({
     .string()
     .min(1)
     .regex(/^[a-z0-9-]+$/, "slug must be lowercase, numbers, and hyphens only"),
-  plan: z.enum(["starter", "pro", "enterprise"]).default("trial" as never).optional()
+  // No .default() here on purpose — "trial" isn't a valid value of this
+  // enum (plan is starter/pro/enterprise; "trial" is a *status*, not a
+  // plan), so a default of "trial" would make parsing fail the moment plan
+  // is omitted. The actual default to "starter" happens below, after
+  // validation, where it can't break parsing.
+  plan: z.enum(["starter", "pro", "enterprise"]).optional()
 });
 
 export async function POST(request: Request) {

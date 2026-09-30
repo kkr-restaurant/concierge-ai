@@ -100,6 +100,13 @@ export default function PlatformPortalPage() {
     sessionId: string;
   } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [createSlug, setCreateSlug] = useState("");
+  const [createPlan, setCreatePlan] = useState<"starter" | "pro" | "enterprise">("starter");
+  const [slugTouched, setSlugTouched] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -175,6 +182,55 @@ export default function PlatformPortalPage() {
     showToast(`Impersonation started for ${impersonateTarget.name}.`);
   }
 
+  async function confirmCreateTenant() {
+    if (!createName.trim() || !createSlug.trim()) return;
+    setCreating(true);
+    setCreateError(null);
+
+    const res = await fetch("/api/v1/platform/tenants", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: createName.trim(), slug: createSlug.trim(), plan: createPlan })
+    });
+
+    setCreating(false);
+
+    if (!res.ok) {
+      if (res.status === 409) {
+        setCreateError("That slug is already taken — try a different one.");
+      } else if (res.status === 400) {
+        const body = await res.json().catch(() => null);
+        setCreateError(
+          body?.details?.fieldErrors?.slug?.[0] ||
+            body?.details?.fieldErrors?.name?.[0] ||
+            "Check the fields and try again."
+        );
+      } else if (res.status === 403) {
+        setCreateError("Only platform_admin can create tenants.");
+      } else {
+        setCreateError("Something went wrong — try again.");
+      }
+      return;
+    }
+
+    const data = await res.json();
+    setTenants((ts) => [data.tenant, ...ts]);
+    showToast(`${data.tenant.name} created.`);
+    setCreateOpen(false);
+    setCreateName("");
+    setCreateSlug("");
+    setCreatePlan("starter");
+    setSlugTouched(false);
+  }
+
+  function slugify(input: string) {
+    return input
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+
   async function endImpersonation() {
     if (!impersonating) return;
     await fetch(`/api/v1/platform/impersonation/${impersonating.sessionId}/end`, {
@@ -226,7 +282,10 @@ export default function PlatformPortalPage() {
             <button className="flex items-center gap-2 text-sm border border-pBorder rounded-md px-3 py-2 hover:bg-pSurface2">
               <ScrollText size={15} /> Audit logs
             </button>
-            <button className="flex items-center gap-2 text-sm bg-steel text-white rounded-md px-3 py-2 hover:brightness-110">
+            <button
+              onClick={() => setCreateOpen(true)}
+              className="flex items-center gap-2 text-sm bg-steel text-white rounded-md px-3 py-2 hover:brightness-110"
+            >
               <Plus size={15} /> Create tenant
             </button>
           </div>
@@ -371,6 +430,84 @@ export default function PlatformPortalPage() {
           </div>
         </div>
       </div>
+
+      {createOpen && (
+        <Modal
+          onClose={() => {
+            setCreateOpen(false);
+            setCreateError(null);
+          }}
+        >
+          <h2 className="font-display text-lg font-medium mb-2">Create a tenant</h2>
+          <p className="text-sm text-muted mb-4">
+            Creates the account with status <span className="text-steel">trial</span>. They can
+            complete their own onboarding wizard afterward.
+          </p>
+
+          {createError && (
+            <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded-md px-3 py-2 mb-4">
+              {createError}
+            </div>
+          )}
+
+          <label className="text-xs text-muted mb-1 block">Business name</label>
+          <input
+            value={createName}
+            onChange={(e) => {
+              const name = e.target.value;
+              setCreateName(name);
+              if (!slugTouched) setCreateSlug(slugify(name));
+            }}
+            placeholder="Sunset Grill"
+            className="w-full bg-pSurface2 border border-pBorder rounded-md px-3 py-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-steel/60"
+          />
+
+          <label className="text-xs text-muted mb-1 block">Slug</label>
+          <input
+            value={createSlug}
+            onChange={(e) => {
+              setSlugTouched(true);
+              setCreateSlug(e.target.value.toLowerCase());
+            }}
+            placeholder="sunset-grill"
+            className="w-full bg-pSurface2 border border-pBorder rounded-md px-3 py-2 text-sm mb-1 font-mono outline-none focus:ring-2 focus:ring-steel/60"
+          />
+          <p className="text-[11px] text-muted mb-3">
+            Lowercase letters, numbers, and hyphens only. Auto-filled from the name — edit it
+            directly if you need something different.
+          </p>
+
+          <label className="text-xs text-muted mb-1 block">Plan</label>
+          <select
+            value={createPlan}
+            onChange={(e) => setCreatePlan(e.target.value as typeof createPlan)}
+            className="w-full bg-pSurface2 border border-pBorder rounded-md px-3 py-2 text-sm mb-6"
+          >
+            <option value="starter">Starter</option>
+            <option value="pro">Pro</option>
+            <option value="enterprise">Enterprise</option>
+          </select>
+
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => {
+                setCreateOpen(false);
+                setCreateError(null);
+              }}
+              className="text-sm border border-pBorder rounded-md px-3 py-2 hover:bg-pSurface2"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmCreateTenant}
+              disabled={!createName.trim() || !createSlug.trim() || creating}
+              className="text-sm bg-steel text-white rounded-md px-3 py-2 disabled:opacity-40 hover:brightness-110"
+            >
+              {creating ? "Creating…" : "Create tenant"}
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {suspendTarget && (
         <Modal onClose={() => { setSuspendTarget(null); setConfirmName(""); }}>
