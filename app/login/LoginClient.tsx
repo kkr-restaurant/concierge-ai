@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Building2,
@@ -152,6 +152,19 @@ function LoginForm({
     setStep("success");
   }
 
+  useEffect(() => {
+    if (step !== "success") return;
+    // Figure out where this account actually belongs instead of guessing:
+    // someone who already finished onboarding goes to their dashboard;
+    // someone who only confirmed their email (e.g. clicked the signup
+    // confirmation link, which doesn't establish a session itself) still
+    // needs to finish the rest of the signup wizard.
+    fetch("/api/v1/tenants/me")
+      .then((res) => (res.ok ? "/dashboard" : "/signup"))
+      .catch(() => "/signup")
+      .then((destination) => router.push(destination));
+  }, [step, router]);
+
   return (
     <main className="min-h-screen grid md:grid-cols-2">
       <section className="hidden md:flex flex-col justify-between bg-surface p-12 border-r border-border">
@@ -296,12 +309,12 @@ function LoginForm({
                   <ShieldCheck size={24} className="text-success" />
                 </div>
                 <h1 className="font-display text-xl font-medium mb-1">Signed in</h1>
-                <p className="text-muted text-sm mb-6">Redirecting to your dashboard…</p>
+                <p className="text-muted text-sm mb-6">Redirecting…</p>
                 <button
-                  onClick={() => router.push("/settings/authentication")}
+                  onClick={() => router.push("/dashboard")}
                   className="inline-flex items-center gap-2 text-sm text-brass hover:underline"
                 >
-                  Go to authentication settings <ArrowRight size={14} />
+                  Continue <ArrowRight size={14} />
                 </button>
               </div>
             )}

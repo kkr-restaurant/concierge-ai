@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, Mail, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
@@ -38,6 +38,13 @@ export default function SignupPage({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsEmailConfirm, setNeedsEmailConfirm] = useState(false);
+  // True for someone who already has an account (confirmed their email
+  // separately, or signed in directly) but hasn't finished the rest of the
+  // wizard yet — skips the "create account" step entirely rather than
+  // calling signUp() again, which would silently no-op for an existing
+  // address and strand them with no way back in.
+  const [resumingSession, setResumingSession] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
 
   // Step 1
   const [businessName, setBusinessName] = useState("");
@@ -61,6 +68,23 @@ export default function SignupPage({
 
   const supabase =
     supabaseUrl && supabaseAnonKey ? createBrowserSupabaseClient(supabaseUrl, supabaseAnonKey) : null;
+
+  useEffect(() => {
+    if (!supabase) {
+      setCheckingSession(false);
+      return;
+    }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setResumingSession(true);
+        setEmail(session.user.email ?? "");
+        setStep(2);
+      }
+      setCheckingSession(false);
+    });
+    // Only on mount — this is a one-time check, not a live subscription.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleStep1Continue() {
     if (!supabase) return;
@@ -127,6 +151,14 @@ export default function SignupPage({
           </h1>
           <p className="text-sm text-muted">Missing server configuration. Please try again later.</p>
         </div>
+      </main>
+    );
+  }
+
+  if (checkingSession) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-ink">
+        <p className="text-muted text-sm">Loading…</p>
       </main>
     );
   }
@@ -246,10 +278,40 @@ export default function SignupPage({
 
         {step === 2 && (
           <div>
-            <h1 className="font-display text-xl font-medium mb-1">What kind of business is this?</h1>
+            <h1 className="font-display text-xl font-medium mb-1">
+              {resumingSession ? "Let's finish setting up" : "What kind of business is this?"}
+            </h1>
             <p className="text-muted text-sm mb-6">
-              Sets a starter knowledge template and default rules.
+              {resumingSession
+                ? "Your account is confirmed — just a few more details."
+                : "Sets a starter knowledge template and default rules."}
             </p>
+
+            {resumingSession && (
+              <>
+                <label className="text-xs text-muted mb-1 block">Business name</label>
+                <input
+                  value={businessName}
+                  onChange={(e) => {
+                    setBusinessName(e.target.value);
+                    if (!slugTouched) setSlug(slugify(e.target.value));
+                  }}
+                  placeholder="Sunset Grill"
+                  className="w-full bg-surface2 border border-border rounded-md px-3 py-2 text-sm mb-4 outline-none focus:ring-2 focus:ring-brass/60"
+                />
+                <label className="text-xs text-muted mb-1 block">Business URL</label>
+                <input
+                  value={slug}
+                  onChange={(e) => {
+                    setSlugTouched(true);
+                    setSlug(e.target.value.toLowerCase());
+                  }}
+                  placeholder="sunset-grill"
+                  className="w-full bg-surface2 border border-border rounded-md px-3 py-2 text-sm mb-6 font-mono outline-none focus:ring-2 focus:ring-brass/60"
+                />
+              </>
+            )}
+
             <div className="grid grid-cols-3 gap-2 mb-6">
               {BUSINESS_TYPES.map((t) => (
                 <button
@@ -267,9 +329,11 @@ export default function SignupPage({
               ))}
             </div>
             <StepNav
-              onBack={() => setStep(1)}
+              onBack={() => (resumingSession ? router.push("/dashboard") : setStep(1))}
               onNext={() => setStep(3)}
-              nextDisabled={!businessType}
+              nextDisabled={
+                !businessType || (resumingSession && (!businessName.trim() || !slug.trim()))
+              }
             />
           </div>
         )}
