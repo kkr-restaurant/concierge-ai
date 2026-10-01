@@ -52,6 +52,7 @@ export const config = {
     "/platform/:path*",
     "/settings/:path*",
     "/api/v1/tenants/:path*",
-    "/dashboard/:path*"
+    "/dashboard/:path*",
+    "/users/:path*"
   ]
 };

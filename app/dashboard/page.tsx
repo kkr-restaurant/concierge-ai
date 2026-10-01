@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, CheckCircle2 } from "lucide-react";
+import BusinessSidebar from "@/app/_components/BusinessSidebar";
 
 type Tenant = {
   id: string;
@@ -74,40 +75,44 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-ink text-fg p-6">
-      <div className="max-w-lg mx-auto pt-10">
-        <div className="w-12 h-12 rounded-full bg-success/15 flex items-center justify-center mx-auto mb-4">
-          <CheckCircle2 size={24} className="text-success" />
-        </div>
-        <div className="text-center mb-8">
-          <h1 className="font-display text-xl font-medium mb-1">Welcome, {tenant?.name}</h1>
-          <p className="text-muted text-sm">
-            You&apos;re signed in as {role} — this data came from the database, not a mock.
+    <div className="flex min-h-screen bg-ink text-fg">
+      <BusinessSidebar current="/dashboard" businessName={tenant?.name} />
+      <main className="flex-1 p-6">
+        <div className="max-w-lg mx-auto pt-10">
+          <div className="w-12 h-12 rounded-full bg-success/15 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 size={24} className="text-success" />
+          </div>
+          <div className="text-center mb-8">
+            <h1 className="font-display text-xl font-medium mb-1">Welcome, {tenant?.name}</h1>
+            <p className="text-muted text-sm">
+              You&apos;re signed in as {role} — this data came from the database, not a mock.
+            </p>
+          </div>
+
+          <div className="bg-surface border border-border rounded-card p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Building2 size={16} className="text-brass" />
+              <span className="font-medium text-sm">Your business</span>
+            </div>
+            <Row label="Name" value={tenant?.name} />
+            <Row label="URL" value={tenant?.slug} mono />
+            <Row label="Business type" value={tenant?.business_type} />
+            <Row label="Plan" value={tenant?.plan} />
+            <Row label="Status" value={tenant?.status} />
+            <Row
+              label="Created"
+              value={tenant?.created_at ? new Date(tenant.created_at).toLocaleString() : "—"}
+            />
+          </div>
+
+          <p className="text-xs text-muted text-center mt-6">
+            Users and Settings (left) are real now. AI Assistant, Workflows, Knowledge Base,
+            Channels, and Analytics still aren&apos;t built — this remains a minimal dashboard, not
+            the full Business Console from the design mockups.
           </p>
         </div>
-
-        <div className="bg-surface border border-border rounded-card p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Building2 size={16} className="text-brass" />
-            <span className="font-medium text-sm">Your business</span>
-          </div>
-          <Row label="Name" value={tenant?.name} />
-          <Row label="URL" value={tenant?.slug} mono />
-          <Row label="Business type" value={tenant?.business_type} />
-          <Row label="Plan" value={tenant?.plan} />
-          <Row label="Status" value={tenant?.status} />
-          <Row
-            label="Created"
-            value={tenant?.created_at ? new Date(tenant.created_at).toLocaleString() : "—"}
-          />
-        </div>
-
-        <p className="text-xs text-muted text-center mt-6">
-          The full dashboard (Workflows, Knowledge Base, Channels, Analytics) isn&apos;t built yet —
-          this screen exists to prove signup actually works end to end.
-        </p>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
 
