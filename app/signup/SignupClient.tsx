@@ -330,10 +330,22 @@ export default function SignupPage({
             </div>
             <StepNav
               onBack={() => (resumingSession ? router.push("/dashboard") : setStep(1))}
-              onNext={() => setStep(3)}
-              nextDisabled={
-                !businessType || (resumingSession && (!businessName.trim() || !slug.trim()))
-              }
+              onNext={() => {
+                setError(null);
+                if (!businessType) {
+                  setError("Pick a business type to continue.");
+                  return;
+                }
+                if (resumingSession && !businessName.trim()) {
+                  setError("Enter your business name to continue.");
+                  return;
+                }
+                if (resumingSession && !slug.trim()) {
+                  setError("Enter your business URL to continue.");
+                  return;
+                }
+                setStep(3);
+              }}
             />
           </div>
         )}
