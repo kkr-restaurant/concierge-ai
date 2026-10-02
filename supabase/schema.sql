@@ -272,3 +272,14 @@ create policy "members can read their tenant's documents"
         and tenant_memberships.auth_user_id = auth.uid()
     )
   );
+
+-- ---------------------------------------------------------------------------
+-- AI Assistant identity — name, avatar, tone
+-- ---------------------------------------------------------------------------
+-- Deliberately NOT here: any actual AI/LLM configuration (model, system
+-- prompt, knowledge-base wiring) — there's no AI orchestrator in this
+-- build, so there's nothing for those settings to configure yet.
+alter table tenants add column assistant_name text not null default 'Assistant';
+alter table tenants add column assistant_avatar text not null default '🤖';
+alter table tenants add column assistant_tone text not null default 'warm_casual'
+  check (assistant_tone in ('warm_casual', 'formal', 'playful'));

@@ -5,7 +5,7 @@ import { Building2 } from "lucide-react";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", built: true },
-  { href: "#", label: "AI Assistant", built: false },
+  { href: "/ai-assistant", label: "AI Assistant", built: true },
   { href: "#", label: "Workflows", built: false },
   { href: "#", label: "Workflow Designer", built: false },
   { href: "#", label: "Rules", built: false },

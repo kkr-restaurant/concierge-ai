@@ -27,12 +27,15 @@ const UpdateSettingsSchema = z.object({
   name: z.string().min(1).optional(),
   business_type: z
     .enum(["hotel", "restaurant", "medical_clinic", "school", "retail", "other"])
-    .optional()
+    .optional(),
   // Deliberately not editable here: slug (used as an identifier elsewhere;
   // changing it is a bigger decision than a quick settings edit) and plan
   // (plan changes belong to a real billing/upgrade flow, which doesn't
   // exist yet — exposing a plan dropdown here would silently change
   // billing-relevant state with no payment flow behind it).
+  assistant_name: z.string().min(1).max(40).optional(),
+  assistant_avatar: z.string().min(1).max(8).optional(),
+  assistant_tone: z.enum(["warm_casual", "formal", "playful"]).optional()
 });
 
 export async function PATCH(request: Request) {
