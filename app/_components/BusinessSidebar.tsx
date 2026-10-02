@@ -9,7 +9,7 @@ const NAV = [
   { href: "#", label: "Workflows", built: false },
   { href: "#", label: "Workflow Designer", built: false },
   { href: "#", label: "Rules", built: false },
-  { href: "#", label: "Knowledge Base", built: false },
+  { href: "/knowledge-base", label: "Knowledge Base", built: true },
   { href: "#", label: "Integrations", built: false },
   { href: "#", label: "Channels", built: false },
   { href: "#", label: "Analytics", built: false },

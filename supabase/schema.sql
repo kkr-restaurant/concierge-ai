@@ -237,3 +237,38 @@ create policy "members can read their own tenant"
         and tenant_memberships.auth_user_id = auth.uid()
     )
   );
+
+-- ---------------------------------------------------------------------------
+-- Knowledge Base — document storage
+-- ---------------------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+values ('documents', 'documents', false)
+on conflict (id) do nothing;
+
+create table documents (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants (id) on delete cascade,
+  uploaded_by uuid references auth.users (id) on delete set null,
+  file_name text not null,
+  storage_path text not null unique,
+  mime_type text not null,
+  size_bytes bigint not null,
+  created_at timestamptz not null default now()
+  -- No "status: indexed/processing" column — no AI indexing pipeline
+  -- exists in this build. A document is either successfully uploaded or
+  -- the insert failed outright.
+);
+
+create index documents_tenant_idx on documents (tenant_id, created_at desc);
+
+alter table documents enable row level security;
+
+create policy "members can read their tenant's documents"
+  on documents for select
+  using (
+    exists (
+      select 1 from tenant_memberships
+      where tenant_memberships.tenant_id = documents.tenant_id
+        and tenant_memberships.auth_user_id = auth.uid()
+    )
+  );
