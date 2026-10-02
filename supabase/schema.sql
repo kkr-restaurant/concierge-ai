@@ -283,3 +283,32 @@ alter table tenants add column assistant_name text not null default 'Assistant';
 alter table tenants add column assistant_avatar text not null default '🤖';
 alter table tenants add column assistant_tone text not null default 'warm_casual'
   check (assistant_tone in ('warm_casual', 'formal', 'playful'));
+
+-- ---------------------------------------------------------------------------
+-- Workflows — definitions only, no execution engine in this build
+-- ---------------------------------------------------------------------------
+create type workflow_status as enum ('draft', 'active');
+
+create table workflows (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants (id) on delete cascade,
+  name text not null,
+  trigger_description text not null,
+  status workflow_status not null default 'draft',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index workflows_tenant_idx on workflows (tenant_id, created_at desc);
+
+alter table workflows enable row level security;
+
+create policy "members can read their tenant's workflows"
+  on workflows for select
+  using (
+    exists (
+      select 1 from tenant_memberships
+      where tenant_memberships.tenant_id = workflows.tenant_id
+        and tenant_memberships.auth_user_id = auth.uid()
+    )
+  );

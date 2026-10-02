@@ -55,6 +55,7 @@ export const config = {
     "/dashboard/:path*",
     "/users/:path*",
     "/knowledge-base/:path*",
-    "/ai-assistant/:path*"
+    "/ai-assistant/:path*",
+    "/workflows/:path*"
   ]
 };
