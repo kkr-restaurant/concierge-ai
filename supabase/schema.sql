@@ -339,3 +339,29 @@ create policy "members can read their tenant's rules"
         and tenant_memberships.auth_user_id = auth.uid()
     )
   );
+
+-- ---------------------------------------------------------------------------
+-- Integrations — named connections, no actual outbound calls
+-- ---------------------------------------------------------------------------
+create table integrations (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants (id) on delete cascade,
+  name text not null,
+  webhook_url text,
+  api_key text,
+  created_at timestamptz not null default now()
+);
+
+create index integrations_tenant_idx on integrations (tenant_id, created_at desc);
+
+alter table integrations enable row level security;
+
+create policy "members can read their tenant's integrations"
+  on integrations for select
+  using (
+    exists (
+      select 1 from tenant_memberships
+      where tenant_memberships.tenant_id = integrations.tenant_id
+        and tenant_memberships.auth_user_id = auth.uid()
+    )
+  );

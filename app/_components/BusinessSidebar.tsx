@@ -10,7 +10,7 @@ const NAV = [
   { href: "#", label: "Workflow Designer", built: false },
   { href: "/rules", label: "Rules", built: true },
   { href: "/knowledge-base", label: "Knowledge Base", built: true },
-  { href: "#", label: "Integrations", built: false },
+  { href: "/integrations", label: "Integrations", built: true },
   { href: "#", label: "Channels", built: false },
   { href: "#", label: "Analytics", built: false },
   { href: "/users", label: "Users", built: true },
