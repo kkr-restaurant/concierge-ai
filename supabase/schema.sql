@@ -312,3 +312,30 @@ create policy "members can read their tenant's workflows"
         and tenant_memberships.auth_user_id = auth.uid()
     )
   );
+
+-- ---------------------------------------------------------------------------
+-- Rules — condition -> action definitions, no execution engine
+-- ---------------------------------------------------------------------------
+create table rules (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants (id) on delete cascade,
+  condition_description text not null,
+  action_description text not null,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index rules_tenant_idx on rules (tenant_id, created_at desc);
+
+alter table rules enable row level security;
+
+create policy "members can read their tenant's rules"
+  on rules for select
+  using (
+    exists (
+      select 1 from tenant_memberships
+      where tenant_memberships.tenant_id = rules.tenant_id
+        and tenant_memberships.auth_user_id = auth.uid()
+    )
+  );

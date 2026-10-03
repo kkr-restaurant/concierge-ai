@@ -8,7 +8,7 @@ const NAV = [
   { href: "/ai-assistant", label: "AI Assistant", built: true },
   { href: "/workflows", label: "Workflows", built: true },
   { href: "#", label: "Workflow Designer", built: false },
-  { href: "#", label: "Rules", built: false },
+  { href: "/rules", label: "Rules", built: true },
   { href: "/knowledge-base", label: "Knowledge Base", built: true },
   { href: "#", label: "Integrations", built: false },
   { href: "#", label: "Channels", built: false },
