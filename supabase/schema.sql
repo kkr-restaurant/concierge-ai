@@ -365,3 +365,10 @@ create policy "members can read their tenant's integrations"
         and tenant_memberships.auth_user_id = auth.uid()
     )
   );
+
+-- ---------------------------------------------------------------------------
+-- Workflow Designer — visual graph definition
+-- ---------------------------------------------------------------------------
+-- The visual canvas graph (nodes + edges) for a workflow, as JSON. Still a
+-- DEFINITION only -- same honesty convention as everything else.
+alter table workflows add column definition jsonb not null default '{"nodes":[],"edges":[]}'::jsonb;

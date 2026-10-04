@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, X } from "lucide-react";
+import Link from "next/link";
+import { Plus, Trash2, X, Workflow as WorkflowIcon } from "lucide-react";
 import BusinessSidebar from "@/app/_components/BusinessSidebar";
 
 type Workflow = {
@@ -147,6 +148,12 @@ export default function WorkflowsPage() {
                   <p className="text-xs text-muted truncate">Trigger: {wf.trigger_description}</p>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
+                  <Link
+                    href={`/workflows/${wf.id}/designer`}
+                    className="text-xs px-2 py-1 rounded-md border border-border text-muted hover:text-brass hover:border-brass flex items-center gap-1"
+                  >
+                    <WorkflowIcon size={12} /> Design
+                  </Link>
                   {canEdit ? (
                     <button
                       onClick={() => toggleStatus(wf)}

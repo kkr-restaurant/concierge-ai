@@ -6,8 +6,41 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 const UpdateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   trigger_description: z.string().min(1).max(300).optional(),
-  status: z.enum(["draft", "active"]).optional()
+  status: z.enum(["draft", "active"]).optional(),
+  // Loosely validated on purpose — this is @xyflow/react's node/edge shape,
+  // which has many optional fields (position, style, handle ids, etc.)
+  // that aren't worth re-declaring here. The canvas library owns that
+  // shape; this route just persists whatever it produces.
+  definition: z
+    .object({
+      nodes: z.array(z.record(z.string(), z.unknown())),
+      edges: z.array(z.record(z.string(), z.unknown()))
+    })
+    .optional()
 });
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ workflowId: string }> }
+) {
+  const { workflowId } = await params;
+  const guard = await requireTenantMember();
+  if (!guard.ok) return guard.response;
+
+  const admin = createAdminSupabaseClient();
+  const { data: workflow, error } = await admin
+    .from("workflows")
+    .select("*")
+    .eq("id", workflowId)
+    .eq("tenant_id", guard.tenantId)
+    .single();
+
+  if (error || !workflow) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ workflow });
+}
 
 export async function PATCH(
   request: Request,
