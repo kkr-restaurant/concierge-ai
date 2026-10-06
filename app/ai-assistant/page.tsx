@@ -32,6 +32,7 @@ export default function AiAssistantPage() {
 
   const [testMessage, setTestMessage] = useState("");
   const [testLog, setTestLog] = useState<{ from: "user" | "bot"; text: string }[]>([]);
+  const [sending, setSending] = useState(false);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -86,17 +87,37 @@ export default function AiAssistantPage() {
     showToast("Assistant identity saved.");
   }
 
-  function sendTestMessage() {
-    if (!testMessage.trim()) return;
-    setTestLog((log) => [
-      ...log,
-      { from: "user", text: testMessage },
-      {
-        from: "bot",
-        text: "AI responses aren't connected in this build yet — this preview only shows your assistant's identity, not a working conversation."
-      }
-    ]);
+  async function sendTestMessage() {
+    const message = testMessage.trim();
+    if (!message || sending) return;
+
+    const history = testLog.map((entry) => ({
+      role: entry.from === "user" ? ("user" as const) : ("assistant" as const),
+      content: entry.text
+    }));
+
+    setTestLog((log) => [...log, { from: "user", text: message }]);
     setTestMessage("");
+    setSending(true);
+
+    const res = await fetch("/api/v1/tenants/ai-assistant/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, history })
+    });
+
+    setSending(false);
+
+    if (!res.ok) {
+      setTestLog((log) => [
+        ...log,
+        { from: "bot", text: "Something went wrong getting a response — try again." }
+      ]);
+      return;
+    }
+
+    const data = await res.json();
+    setTestLog((log) => [...log, { from: "bot", text: data.reply }]);
   }
 
   if (loading) {
@@ -113,9 +134,10 @@ export default function AiAssistantPage() {
       <main className="flex-1 p-8">
         <h1 className="font-display text-xl font-medium mb-1">AI Assistant</h1>
         <p className="text-muted text-sm mb-6">
-          Your assistant&apos;s identity — name, avatar, and tone. Actual AI conversations aren&apos;t
-          wired up in this build; this page configures what the assistant will be called once they
-          are.
+          Your assistant&apos;s identity — name, avatar, and tone — plus a real conversation,
+          running on Cloudflare Workers AI. It doesn&apos;t know your actual hours, menu, or
+          policies yet — Knowledge Base, Workflows, and Rules aren&apos;t connected to it — but the
+          conversation itself is real, not scripted.
         </p>
 
         <div className="grid md:grid-cols-2 gap-6 max-w-3xl">
@@ -166,7 +188,7 @@ export default function AiAssistantPage() {
             <div className="flex items-center gap-2 mb-3">
               <span className="text-xl">{avatar}</span>
               <span className="text-sm font-medium">{name}</span>
-              <span className="text-xs text-muted ml-auto">preview only — not live</span>
+              <span className="text-xs text-success ml-auto">● live</span>
             </div>
             <div className="flex-1 bg-surface2 rounded-md p-3 mb-3 min-h-[180px] max-h-[260px] overflow-y-auto flex flex-col gap-2">
               {testLog.length === 0 && (
@@ -186,18 +208,25 @@ export default function AiAssistantPage() {
                   {entry.text}
                 </div>
               ))}
+              {sending && (
+                <div className="text-sm px-3 py-2 rounded-md max-w-[85%] bg-surface text-muted self-start">
+                  …
+                </div>
+              )}
             </div>
             <div className="flex gap-2">
               <input
                 value={testMessage}
                 onChange={(e) => setTestMessage(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && sendTestMessage()}
+                onKeyDown={(e) => e.key === "Enter" && !sending && sendTestMessage()}
                 placeholder="Type a message…"
-                className="flex-1 bg-surface2 border border-border rounded-md px-3 py-2 text-sm"
+                disabled={sending}
+                className="flex-1 bg-surface2 border border-border rounded-md px-3 py-2 text-sm disabled:opacity-60"
               />
               <button
                 onClick={sendTestMessage}
-                className="bg-brass text-ink rounded-md px-3"
+                disabled={sending}
+                className="bg-brass text-ink rounded-md px-3 disabled:opacity-60"
                 aria-label="Send"
               >
                 <Send size={15} />
