@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireTenantMember } from "@/lib/auth/require-tenant-member";
+import { requireAgentAccess } from "@/lib/auth/require-agent-access";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 const UpdateSchema = z.object({
@@ -11,10 +11,10 @@ const UpdateSchema = z.object({
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ ruleId: string }> }
+  { params }: { params: Promise<{ agentId: string; ruleId: string }> }
 ) {
-  const { ruleId } = await params;
-  const guard = await requireTenantMember(["owner", "admin"]);
+  const { agentId, ruleId } = await params;
+  const guard = await requireAgentAccess(agentId, ["owner", "admin"]);
   if (!guard.ok) return guard.response;
 
   const body = await request.json().catch(() => null);
@@ -28,7 +28,7 @@ export async function PATCH(
     .from("rules")
     .update({ ...parsed.data, updated_at: new Date().toISOString() })
     .eq("id", ruleId)
-    .eq("tenant_id", guard.tenantId)
+    .eq("agent_id", agentId)
     .select()
     .single();
 
@@ -41,10 +41,10 @@ export async function PATCH(
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: Promise<{ ruleId: string }> }
+  { params }: { params: Promise<{ agentId: string; ruleId: string }> }
 ) {
-  const { ruleId } = await params;
-  const guard = await requireTenantMember(["owner", "admin"]);
+  const { agentId, ruleId } = await params;
+  const guard = await requireAgentAccess(agentId, ["owner", "admin"]);
   if (!guard.ok) return guard.response;
 
   const admin = createAdminSupabaseClient();
@@ -52,7 +52,7 @@ export async function DELETE(
     .from("rules")
     .delete({ count: "exact" })
     .eq("id", ruleId)
-    .eq("tenant_id", guard.tenantId);
+    .eq("agent_id", agentId);
 
   if (error || !count) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });

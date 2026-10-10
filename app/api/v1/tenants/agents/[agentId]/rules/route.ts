@@ -1,24 +1,28 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireTenantMember } from "@/lib/auth/require-tenant-member";
+import { requireAgentAccess } from "@/lib/auth/require-agent-access";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
-export async function GET() {
-  const guard = await requireTenantMember();
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ agentId: string }> }
+) {
+  const { agentId } = await params;
+  const guard = await requireAgentAccess(agentId);
   if (!guard.ok) return guard.response;
 
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("rules")
     .select("*")
-    .eq("tenant_id", guard.tenantId)
+    .eq("agent_id", agentId)
     .order("created_at", { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: "query_failed" }, { status: 500 });
   }
 
-  return NextResponse.json({ rules: data ?? [] });
+  return NextResponse.json({ rules: data ?? [], role: guard.role });
 }
 
 const CreateSchema = z.object({
@@ -26,8 +30,12 @@ const CreateSchema = z.object({
   action_description: z.string().min(1).max(300)
 });
 
-export async function POST(request: Request) {
-  const guard = await requireTenantMember(["owner", "admin"]);
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ agentId: string }> }
+) {
+  const { agentId } = await params;
+  const guard = await requireAgentAccess(agentId, ["owner", "admin"]);
   if (!guard.ok) return guard.response;
 
   const body = await request.json().catch(() => null);
@@ -44,6 +52,7 @@ export async function POST(request: Request) {
     .from("rules")
     .insert({
       tenant_id: guard.tenantId,
+      agent_id: agentId,
       condition_description: parsed.data.condition_description,
       action_description: parsed.data.action_description
     })

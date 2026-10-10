@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireTenantMember } from "@/lib/auth/require-tenant-member";
+import { requireAgentAccess } from "@/lib/auth/require-agent-access";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -12,15 +12,19 @@ const ALLOWED_MIME_TYPES = new Set([
   "text/csv"
 ]);
 
-export async function GET() {
-  const guard = await requireTenantMember();
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ agentId: string }> }
+) {
+  const { agentId } = await params;
+  const guard = await requireAgentAccess(agentId);
   if (!guard.ok) return guard.response;
 
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("documents")
     .select("id, file_name, mime_type, size_bytes, created_at")
-    .eq("tenant_id", guard.tenantId)
+    .eq("agent_id", agentId)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -30,8 +34,12 @@ export async function GET() {
   return NextResponse.json({ documents: data ?? [] });
 }
 
-export async function POST(request: Request) {
-  const guard = await requireTenantMember();
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ agentId: string }> }
+) {
+  const { agentId } = await params;
+  const guard = await requireAgentAccess(agentId);
   if (!guard.ok) return guard.response;
 
   const formData = await request.formData().catch(() => null);
@@ -51,11 +59,10 @@ export async function POST(request: Request) {
 
   const admin = createAdminSupabaseClient();
 
-  // "{tenant_id}/{uuid}-{filename}" keeps every tenant's files in their own
-  // prefix (relevant if the bucket is ever made public or given per-prefix
-  // policies later) and avoids collisions between two uploads of the same
-  // filename.
-  const storagePath = `${guard.tenantId}/${crypto.randomUUID()}-${file.name}`;
+  // "{tenant_id}/{agent_id}/{uuid}-{filename}" — each agent's files live
+  // under their own prefix, and the uuid avoids collisions between two
+  // uploads of the same filename.
+  const storagePath = `${guard.tenantId}/${agentId}/${crypto.randomUUID()}-${file.name}`;
 
   const { error: uploadError } = await admin.storage
     .from("documents")
@@ -69,6 +76,7 @@ export async function POST(request: Request) {
     .from("documents")
     .insert({
       tenant_id: guard.tenantId,
+      agent_id: agentId,
       uploaded_by: guard.userId,
       file_name: file.name,
       storage_path: storagePath,

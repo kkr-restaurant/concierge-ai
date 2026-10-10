@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireTenantMember } from "@/lib/auth/require-tenant-member";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { CAPABILITY_KEYS, CHANNEL_KEYS } from "@/lib/agent-options";
 
 export async function GET() {
   const guard = await requireTenantMember();
@@ -9,21 +10,25 @@ export async function GET() {
 
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
-    .from("workflows")
+    .from("agents")
     .select("*")
     .eq("tenant_id", guard.tenantId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: true });
 
   if (error) {
     return NextResponse.json({ error: "query_failed" }, { status: 500 });
   }
 
-  return NextResponse.json({ workflows: data ?? [] });
+  return NextResponse.json({ agents: data ?? [], role: guard.role });
 }
 
 const CreateSchema = z.object({
-  name: z.string().min(1).max(100),
-  trigger_description: z.string().min(1).max(300)
+  name: z.string().min(1).max(60),
+  avatar: z.string().min(1).max(8).optional(),
+  tone: z.enum(["warm_casual", "formal", "playful"]).optional(),
+  description: z.string().max(500).optional(),
+  capabilities: z.array(z.enum(CAPABILITY_KEYS)).optional(),
+  channels: z.array(z.enum(CHANNEL_KEYS)).optional()
 });
 
 export async function POST(request: Request) {
@@ -40,14 +45,19 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminSupabaseClient();
-  const { data: workflow, error } = await admin
-    .from("workflows")
+  const { data: agent, error } = await admin
+    .from("agents")
     .insert({
       tenant_id: guard.tenantId,
       name: parsed.data.name,
-      trigger_description: parsed.data.trigger_description
-      // status defaults to 'draft' — a new workflow starts inactive until
-      // explicitly turned on, same convention as the status toggle below.
+      ...(parsed.data.avatar && { avatar: parsed.data.avatar }),
+      ...(parsed.data.tone && { tone: parsed.data.tone }),
+      ...(parsed.data.description !== undefined && { description: parsed.data.description }),
+      ...(parsed.data.capabilities && { capabilities: parsed.data.capabilities }),
+      ...(parsed.data.channels && { channels: parsed.data.channels })
+      // status defaults to 'draft' in the schema — the wizard creates the
+      // agent after step 1 so later steps (knowledge uploads etc.) have a
+      // real agent row to attach to, and flips it to 'live' at Launch.
     })
     .select()
     .single();
@@ -56,5 +66,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "insert_failed" }, { status: 500 });
   }
 
-  return NextResponse.json({ workflow }, { status: 201 });
+  return NextResponse.json({ agent }, { status: 201 });
 }

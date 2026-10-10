@@ -33,9 +33,10 @@ const UpdateSettingsSchema = z.object({
   // (plan changes belong to a real billing/upgrade flow, which doesn't
   // exist yet — exposing a plan dropdown here would silently change
   // billing-relevant state with no payment flow behind it).
-  assistant_name: z.string().min(1).max(40).optional(),
-  assistant_avatar: z.string().min(1).max(8).optional(),
-  assistant_tone: z.enum(["warm_casual", "formal", "playful"]).optional()
+  //
+  // (Assistant name/avatar/tone used to be editable here. They moved to the
+  // per-agent model — each agent has its own — so those columns no longer
+  // exist on tenants.)
 });
 
 export async function PATCH(request: Request) {

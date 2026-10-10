@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { requireTenantMember } from "@/lib/auth/require-tenant-member";
+import { requireAgentAccess } from "@/lib/auth/require-agent-access";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ documentId: string }> }
+  { params }: { params: Promise<{ agentId: string; documentId: string }> }
 ) {
-  const { documentId } = await params;
-  const guard = await requireTenantMember();
+  const { agentId, documentId } = await params;
+  const guard = await requireAgentAccess(agentId);
   if (!guard.ok) return guard.response;
 
   const admin = createAdminSupabaseClient();
@@ -15,7 +15,7 @@ export async function GET(
     .from("documents")
     .select("storage_path, file_name")
     .eq("id", documentId)
-    .eq("tenant_id", guard.tenantId) // can't fetch another tenant's document
+    .eq("agent_id", agentId) // must belong to THIS agent, not just this tenant
     .single();
 
   if (error || !doc) {
@@ -37,10 +37,10 @@ export async function GET(
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: Promise<{ documentId: string }> }
+  { params }: { params: Promise<{ agentId: string; documentId: string }> }
 ) {
-  const { documentId } = await params;
-  const guard = await requireTenantMember();
+  const { agentId, documentId } = await params;
+  const guard = await requireAgentAccess(agentId);
   if (!guard.ok) return guard.response;
 
   const admin = createAdminSupabaseClient();
@@ -48,7 +48,7 @@ export async function DELETE(
     .from("documents")
     .select("storage_path")
     .eq("id", documentId)
-    .eq("tenant_id", guard.tenantId)
+    .eq("agent_id", agentId)
     .single();
 
   if (fetchError || !doc) {
