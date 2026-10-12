@@ -3,24 +3,20 @@
 import Link from "next/link";
 import { Building2 } from "lucide-react";
 
+// Knowledge Base, Workflows, Rules, and Channels used to be top-level items.
+// They're per-agent now, so they live inside each agent (as tabs and
+// settings) and "Agents" is the single way in. Integrations stay
+// tenant-wide: they're shared infrastructure (CRM, POS, webhooks), not
+// something that belongs to one agent.
 const NAV = [
   { href: "/dashboard", label: "Dashboard", built: true },
-  { href: "/ai-assistant", label: "AI Assistant", built: true },
-  // Workflows and Workflow Designer share a destination (you pick a
-  // workflow from the list, then open its designer) — isActive distinguishes
-  // them by whether the current path is the list itself or a sub-route, so
-  // only one highlights at a time instead of both lighting up together.
-  { href: "/workflows", label: "Workflows", built: true, isActive: (c: string) => c === "/workflows" },
   {
-    href: "/workflows",
-    label: "Workflow Designer",
+    href: "/agents",
+    label: "Agents",
     built: true,
-    isActive: (c: string) => c.startsWith("/workflows/")
+    isActive: (c: string) => c === "/agents" || c.startsWith("/agents/")
   },
-  { href: "/rules", label: "Rules", built: true },
-  { href: "/knowledge-base", label: "Knowledge Base", built: true },
   { href: "/integrations", label: "Integrations", built: true },
-  { href: "#", label: "Channels", built: false },
   { href: "#", label: "Analytics", built: false },
   { href: "/users", label: "Users", built: true },
   { href: "/settings", label: "Settings", built: true }

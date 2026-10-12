@@ -372,3 +372,75 @@ create policy "members can read their tenant's integrations"
 -- The visual canvas graph (nodes + edges) for a workflow, as JSON. Still a
 -- DEFINITION only -- same honesty convention as everything else.
 alter table workflows add column definition jsonb not null default '{"nodes":[],"edges":[]}'::jsonb;
+
+-- ---------------------------------------------------------------------------
+-- Multi-agent model — agents own their knowledge, workflows, and rules
+-- ---------------------------------------------------------------------------
+-- A tenant can have several named agents (Sales, Support, Booking...), each
+-- with its own identity, capabilities, channels, knowledge base, workflows,
+-- and rules. Replaces the single assistant_name/avatar/tone columns that
+-- used to live on tenants.
+create table agents (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants (id) on delete cascade,
+  name text not null,
+  avatar text not null default '🤖',
+  tone text not null default 'warm_casual'
+    check (tone in ('warm_casual', 'formal', 'playful')),
+  description text not null default '',
+  status text not null default 'draft' check (status in ('draft', 'live')),
+  -- JSON arrays of string keys. Real, saved data — but nothing executes
+  -- capabilities and nothing actually connects a channel.
+  capabilities jsonb not null default '[]'::jsonb,
+  channels jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index agents_tenant_idx on agents (tenant_id, created_at desc);
+
+alter table agents enable row level security;
+
+create policy "members can read their tenant's agents"
+  on agents for select
+  using (
+    exists (
+      select 1 from tenant_memberships
+      where tenant_memberships.tenant_id = agents.tenant_id
+        and tenant_memberships.auth_user_id = auth.uid()
+    )
+  );
+
+-- Migration of pre-existing single-assistant tenants: one default agent each,
+-- carrying over the tenant's old identity (no-op on a fresh database).
+insert into agents (tenant_id, name, avatar, tone, description, status, capabilities, channels)
+select t.id, t.assistant_name, t.assistant_avatar, t.assistant_tone,
+  'Default agent — migrated from this business''s original single-assistant setup.',
+  'live', '["answer_questions","human_handoff"]'::jsonb, '["web_widget"]'::jsonb
+from tenants t
+where not exists (select 1 from agents a where a.tenant_id = t.id);
+
+-- tenant_id stays on these tables (existing RLS still keys off it and stays
+-- correct); agent_id is the additional, finer scoping key. Added nullable,
+-- backfilled, then made NOT NULL so existing rows follow their tenant's
+-- default agent instead of being lost.
+alter table documents add column agent_id uuid references agents (id) on delete cascade;
+alter table workflows add column agent_id uuid references agents (id) on delete cascade;
+alter table rules add column agent_id uuid references agents (id) on delete cascade;
+
+update documents d set agent_id = (select a.id from agents a where a.tenant_id = d.tenant_id order by a.created_at limit 1);
+update workflows w set agent_id = (select a.id from agents a where a.tenant_id = w.tenant_id order by a.created_at limit 1);
+update rules r set agent_id = (select a.id from agents a where a.tenant_id = r.tenant_id order by a.created_at limit 1);
+
+alter table documents alter column agent_id set not null;
+alter table workflows alter column agent_id set not null;
+alter table rules alter column agent_id set not null;
+
+create index documents_agent_idx on documents (agent_id, created_at desc);
+create index workflows_agent_idx on workflows (agent_id, created_at desc);
+create index rules_agent_idx on rules (agent_id, created_at desc);
+
+-- Superseded by the agents table.
+alter table tenants drop column assistant_name;
+alter table tenants drop column assistant_avatar;
+alter table tenants drop column assistant_tone;

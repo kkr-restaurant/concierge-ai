@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Plus, Trash2, X, ArrowRight } from "lucide-react";
 import BusinessSidebar from "@/app/_components/BusinessSidebar";
+import AgentTabs from "@/app/_components/AgentTabs";
 
 type Rule = {
   id: string;
@@ -15,6 +16,19 @@ type Rule = {
 
 export default function RulesPage() {
   const router = useRouter();
+  const { agentId } = useParams<{ agentId: string }>();
+  const [agent, setAgent] = useState<{
+    name: string;
+    avatar: string;
+    status: "draft" | "live";
+  } | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/v1/tenants/agents/${agentId}`).then(async (r) => {
+      if (r.ok) setAgent((await r.json()).agent);
+    });
+  }, [agentId]);
+
   const [rules, setRules] = useState<Rule[]>([]);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,22 +47,22 @@ export default function RulesPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [rulesRes, meRes] = await Promise.all([
-      fetch("/api/v1/tenants/rules"),
-      fetch("/api/v1/tenants/me")
-    ]);
+    const rulesRes = await fetch(`/api/v1/tenants/agents/${agentId}/rules`);
     if (rulesRes.status === 401) {
       router.replace("/login");
       return;
     }
     if (rulesRes.status === 404) {
-      router.replace("/signup");
+      router.replace("/agents");
       return;
     }
-    if (rulesRes.ok) setRules((await rulesRes.json()).rules);
-    if (meRes.ok) setRole((await meRes.json()).role);
+    if (rulesRes.ok) {
+      const data = await rulesRes.json();
+      setRules(data.rules);
+      setRole(data.role);
+    }
     setLoading(false);
-  }, [router]);
+  }, [router, agentId]);
 
   useEffect(() => {
     load();
@@ -63,7 +77,7 @@ export default function RulesPage() {
       return;
     }
     setCreating(true);
-    const res = await fetch("/api/v1/tenants/rules", {
+    const res = await fetch(`/api/v1/tenants/agents/${agentId}/rules`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -85,7 +99,7 @@ export default function RulesPage() {
   }
 
   async function toggleActive(rule: Rule) {
-    const res = await fetch(`/api/v1/tenants/rules/${rule.id}`, {
+    const res = await fetch(`/api/v1/tenants/agents/${agentId}/rules/${rule.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ is_active: !rule.is_active })
@@ -99,7 +113,9 @@ export default function RulesPage() {
 
   async function deleteRule(rule: Rule) {
     if (!confirm("Delete this rule?")) return;
-    const res = await fetch(`/api/v1/tenants/rules/${rule.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/v1/tenants/agents/${agentId}/rules/${rule.id}`, {
+      method: "DELETE"
+    });
     if (!res.ok) {
       showToast("Couldn't delete.");
       return;
@@ -110,12 +126,19 @@ export default function RulesPage() {
 
   return (
     <div className="flex min-h-screen bg-ink text-fg">
-      <BusinessSidebar current="/rules" />
+      <BusinessSidebar current="/agents" />
       <main className="flex-1 p-8 max-w-2xl">
+        <AgentTabs
+          agentId={agentId}
+          active="rules"
+          agentName={agent?.name}
+          agentAvatar={agent?.avatar}
+          status={agent?.status}
+        />
         <div className="flex items-center justify-between mb-2">
           <div>
-            <h1 className="font-display text-xl font-medium">Rules</h1>
-            <p className="text-muted text-sm">Condition-based behaviors for your assistant</p>
+            <h2 className="text-sm font-medium">Rules</h2>
+            <p className="text-muted text-sm">Condition-based guidance for this agent</p>
           </div>
           {canEdit && (
             <button
@@ -127,8 +150,10 @@ export default function RulesPage() {
           )}
         </div>
         <p className="text-xs text-muted mb-6">
-          Nothing evaluates these yet — there&apos;s no AI orchestrator in this build. This defines
-          what should happen once one exists.
+          <b>Active</b> rules are given to this agent as guidance when it replies, so they shape
+          what it says. They can&apos;t trigger real actions — a rule like &quot;escalate to
+          staff&quot; makes the agent tell the person to contact staff; it doesn&apos;t notify
+          anyone.
         </p>
 
         {loading ? (

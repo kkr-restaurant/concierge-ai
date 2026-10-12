@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Plus, Trash2, X, Workflow as WorkflowIcon } from "lucide-react";
 import BusinessSidebar from "@/app/_components/BusinessSidebar";
+import AgentTabs from "@/app/_components/AgentTabs";
 
 type Workflow = {
   id: string;
@@ -16,6 +17,19 @@ type Workflow = {
 
 export default function WorkflowsPage() {
   const router = useRouter();
+  const { agentId } = useParams<{ agentId: string }>();
+  const [agent, setAgent] = useState<{
+    name: string;
+    avatar: string;
+    status: "draft" | "live";
+  } | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/v1/tenants/agents/${agentId}`).then(async (r) => {
+      if (r.ok) setAgent((await r.json()).agent);
+    });
+  }, [agentId]);
+
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,22 +48,22 @@ export default function WorkflowsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [wfRes, meRes] = await Promise.all([
-      fetch("/api/v1/tenants/workflows"),
-      fetch("/api/v1/tenants/me")
-    ]);
+    const wfRes = await fetch(`/api/v1/tenants/agents/${agentId}/workflows`);
     if (wfRes.status === 401) {
       router.replace("/login");
       return;
     }
     if (wfRes.status === 404) {
-      router.replace("/signup");
+      router.replace("/agents");
       return;
     }
-    if (wfRes.ok) setWorkflows((await wfRes.json()).workflows);
-    if (meRes.ok) setRole((await meRes.json()).role);
+    if (wfRes.ok) {
+      const data = await wfRes.json();
+      setWorkflows(data.workflows);
+      setRole(data.role);
+    }
     setLoading(false);
-  }, [router]);
+  }, [router, agentId]);
 
   useEffect(() => {
     load();
@@ -64,7 +78,7 @@ export default function WorkflowsPage() {
       return;
     }
     setCreating(true);
-    const res = await fetch("/api/v1/tenants/workflows", {
+    const res = await fetch(`/api/v1/tenants/agents/${agentId}/workflows`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: name.trim(), trigger_description: trigger.trim() })
@@ -84,7 +98,7 @@ export default function WorkflowsPage() {
 
   async function toggleStatus(wf: Workflow) {
     const nextStatus = wf.status === "active" ? "draft" : "active";
-    const res = await fetch(`/api/v1/tenants/workflows/${wf.id}`, {
+    const res = await fetch(`/api/v1/tenants/agents/${agentId}/workflows/${wf.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: nextStatus })
@@ -98,7 +112,9 @@ export default function WorkflowsPage() {
 
   async function deleteWorkflow(wf: Workflow) {
     if (!confirm(`Delete "${wf.name}"?`)) return;
-    const res = await fetch(`/api/v1/tenants/workflows/${wf.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/v1/tenants/agents/${agentId}/workflows/${wf.id}`, {
+      method: "DELETE"
+    });
     if (!res.ok) {
       showToast("Couldn't delete.");
       return;
@@ -109,14 +125,19 @@ export default function WorkflowsPage() {
 
   return (
     <div className="flex min-h-screen bg-ink text-fg">
-      <BusinessSidebar current="/workflows" />
+      <BusinessSidebar current="/agents" />
       <main className="flex-1 p-8 max-w-2xl">
+        <AgentTabs
+          agentId={agentId}
+          active="workflows"
+          agentName={agent?.name}
+          agentAvatar={agent?.avatar}
+          status={agent?.status}
+        />
         <div className="flex items-center justify-between mb-2">
           <div>
-            <h1 className="font-display text-xl font-medium">Workflows</h1>
-            <p className="text-muted text-sm">
-              Automations your assistant will follow once it&apos;s connected
-            </p>
+            <h2 className="text-sm font-medium">Workflows</h2>
+            <p className="text-muted text-sm">Automations for this agent</p>
           </div>
           {canEdit && (
             <button
@@ -128,8 +149,9 @@ export default function WorkflowsPage() {
           )}
         </div>
         <p className="text-xs text-muted mb-6">
-          Nothing executes these yet — there&apos;s no AI orchestrator in this build. This defines
-          what should happen once one exists.
+          Nothing executes these yet — there&apos;s no workflow engine in this build, and the agent
+          doesn&apos;t read them in conversation. This defines what should happen once one
+          exists.
         </p>
 
         {loading ? (
@@ -149,7 +171,7 @@ export default function WorkflowsPage() {
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <Link
-                    href={`/workflows/${wf.id}/designer`}
+                    href={`/agents/${agentId}/workflows/${wf.id}/designer`}
                     className="text-xs px-2 py-1 rounded-md border border-border text-muted hover:text-brass hover:border-brass flex items-center gap-1"
                   >
                     <WorkflowIcon size={12} /> Design

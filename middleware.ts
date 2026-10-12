@@ -54,10 +54,7 @@ export const config = {
     "/api/v1/tenants/:path*",
     "/dashboard/:path*",
     "/users/:path*",
-    "/knowledge-base/:path*",
-    "/ai-assistant/:path*",
-    "/workflows/:path*",
-    "/rules/:path*",
+    "/agents/:path*",
     "/integrations/:path*"
   ]
 };

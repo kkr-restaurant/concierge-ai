@@ -28,7 +28,7 @@ function freshId() {
   return `step-${Date.now()}-${nextId++}`;
 }
 
-function DesignerCanvas({ workflowId }: { workflowId: string }) {
+function DesignerCanvas({ agentId, workflowId }: { agentId: string; workflowId: string }) {
   const router = useRouter();
   const [workflowName, setWorkflowName] = useState("");
   const [nodes, setNodes] = useState<Node<StepNodeData>[]>([]);
@@ -45,14 +45,14 @@ function DesignerCanvas({ workflowId }: { workflowId: string }) {
   }
 
   useEffect(() => {
-    fetch(`/api/v1/tenants/workflows/${workflowId}`)
+    fetch(`/api/v1/tenants/agents/${agentId}/workflows/${workflowId}`)
       .then(async (res) => {
         if (res.status === 401) {
           router.replace("/login");
           return null;
         }
         if (!res.ok) {
-          router.replace("/workflows");
+          router.replace(`/agents/${agentId}/workflows`);
           return null;
         }
         return res.json();
@@ -66,7 +66,7 @@ function DesignerCanvas({ workflowId }: { workflowId: string }) {
       })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workflowId]);
+  }, [agentId, workflowId]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange<Node<StepNodeData>>[]) =>
@@ -111,7 +111,7 @@ function DesignerCanvas({ workflowId }: { workflowId: string }) {
 
   async function save() {
     setSaving(true);
-    const res = await fetch(`/api/v1/tenants/workflows/${workflowId}`, {
+    const res = await fetch(`/api/v1/tenants/agents/${agentId}/workflows/${workflowId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ definition: { nodes, edges } })
@@ -139,7 +139,7 @@ function DesignerCanvas({ workflowId }: { workflowId: string }) {
     <div className="flex flex-col h-screen bg-ink text-fg">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-3 min-w-0">
-          <Link href="/workflows" className="text-muted hover:text-fg">
+          <Link href={`/agents/${agentId}/workflows`} className="text-muted hover:text-fg">
             <ArrowLeft size={18} />
           </Link>
           <div className="min-w-0">
@@ -234,10 +234,10 @@ function DesignerCanvas({ workflowId }: { workflowId: string }) {
 }
 
 export default function WorkflowDesignerPage() {
-  const params = useParams<{ workflowId: string }>();
+  const params = useParams<{ agentId: string; workflowId: string }>();
   return (
     <ReactFlowProvider>
-      <DesignerCanvas workflowId={params.workflowId} />
+      <DesignerCanvas agentId={params.agentId} workflowId={params.workflowId} />
     </ReactFlowProvider>
   );
 }

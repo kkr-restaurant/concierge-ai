@@ -106,9 +106,9 @@ export default function DashboardPage() {
           </div>
 
           <p className="text-xs text-muted text-center mt-6">
-            Users and Settings (left) are real now. AI Assistant, Workflows, Knowledge Base,
-            Channels, and Analytics still aren&apos;t built — this remains a minimal dashboard, not
-            the full Business Console from the design mockups.
+            Agents, Integrations, Users, and Settings (left) are real. Analytics isn&apos;t built,
+            and channels are recorded per agent but not actually connected — this remains a
+            minimal dashboard, not the full Business Console from the design mockups.
           </p>
         </div>
       </main>

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Upload, FileText, Trash2, Download } from "lucide-react";
 import BusinessSidebar from "@/app/_components/BusinessSidebar";
+import AgentTabs from "@/app/_components/AgentTabs";
 
 type Doc = {
   id: string;
@@ -25,6 +26,19 @@ function formatSize(bytes: number) {
 
 export default function KnowledgeBasePage() {
   const router = useRouter();
+  const { agentId } = useParams<{ agentId: string }>();
+  const [agent, setAgent] = useState<{
+    name: string;
+    avatar: string;
+    status: "draft" | "live";
+  } | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/v1/tenants/agents/${agentId}`).then(async (r) => {
+      if (r.ok) setAgent((await r.json()).agent);
+    });
+  }, [agentId]);
+
   const [docs, setDocs] = useState<Doc[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -40,13 +54,13 @@ export default function KnowledgeBasePage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/v1/tenants/documents");
+    const res = await fetch(`/api/v1/tenants/agents/${agentId}/documents`);
     if (res.status === 401) {
       router.replace("/login");
       return;
     }
     if (res.status === 404) {
-      router.replace("/signup");
+      router.replace("/agents");
       return;
     }
     if (res.ok) {
@@ -54,7 +68,7 @@ export default function KnowledgeBasePage() {
       setDocs(data.documents);
     }
     setLoading(false);
-  }, [router]);
+  }, [router, agentId]);
 
   useEffect(() => {
     load();
@@ -70,7 +84,10 @@ export default function KnowledgeBasePage() {
     const formData = new FormData();
     formData.append("file", file);
 
-    const res = await fetch("/api/v1/tenants/documents", { method: "POST", body: formData });
+    const res = await fetch(`/api/v1/tenants/agents/${agentId}/documents`, {
+      method: "POST",
+      body: formData
+    });
     setUploading(false);
 
     if (!res.ok) {
@@ -89,7 +106,9 @@ export default function KnowledgeBasePage() {
 
   async function handleDelete(doc: Doc) {
     if (!confirm(`Delete ${doc.file_name}? This can't be undone.`)) return;
-    const res = await fetch(`/api/v1/tenants/documents/${doc.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/v1/tenants/agents/${agentId}/documents/${doc.id}`, {
+      method: "DELETE"
+    });
     if (!res.ok) {
       showToast("Couldn't delete — try again.");
       return;
@@ -99,7 +118,7 @@ export default function KnowledgeBasePage() {
   }
 
   async function handleDownload(doc: Doc) {
-    const res = await fetch(`/api/v1/tenants/documents/${doc.id}`);
+    const res = await fetch(`/api/v1/tenants/agents/${agentId}/documents/${doc.id}`);
     if (!res.ok) {
       showToast("Couldn't get a download link.");
       return;
@@ -110,12 +129,22 @@ export default function KnowledgeBasePage() {
 
   return (
     <div className="flex min-h-screen bg-ink text-fg">
-      <BusinessSidebar current="/knowledge-base" />
+      <BusinessSidebar current="/agents" />
       <main className="flex-1 p-8 max-w-2xl">
-        <h1 className="font-display text-xl font-medium mb-1">Knowledge Base</h1>
-        <p className="text-muted text-sm mb-6">
-          Upload documents — menus, policies, FAQs. PDF, Word, text, markdown, or CSV, up to{" "}
-          {MAX_SIZE_MB}MB each.
+        <AgentTabs
+          agentId={agentId}
+          active="knowledge"
+          agentName={agent?.name}
+          agentAvatar={agent?.avatar}
+          status={agent?.status}
+        />
+        <p className="text-muted text-sm mb-2">
+          Files for this agent only — menus, policies, FAQs. PDF, Word, text, markdown, or CSV, up
+          to {MAX_SIZE_MB}MB each.
+        </p>
+        <p className="text-xs text-muted mb-6">
+          The agent can currently <b>read .txt, .md, and .csv</b> files when answering. PDF and Word
+          files are stored but it can&apos;t read them yet.
         </p>
 
         {error && (
